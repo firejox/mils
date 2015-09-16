@@ -1,4 +1,5 @@
-#include "view.h"
+//#include "view.h"
+#include "input.h"
 #include "common.h"
 #include <stdio.h>
 #include <unistd.h>
@@ -7,7 +8,12 @@ int main(void) {
     int epfd;
     struct epoll_event tmp;
     data_handler_t *handle;
-    view_t *v;
+    int timeout = -1;
+    int ret;
+    keysym_t syms;
+//    view_t *v;
+    input_state_t *ist;
+    char *str;
 
     epfd = epoll_create1 (0);
     if (epfd == -1) {
@@ -15,6 +21,22 @@ int main(void) {
         return -1;
     }
 
+    ist = input_state_create (epfd);
+    while ((ret = epoll_wait (epfd, &tmp, 1, timeout)) > -1) {
+        if (ret) {
+            handle = tmp.data.ptr;
+            handle->handler (tmp.data.fd, handle->data);
+        }
+
+        syms = get_input_state_info (ist, &timeout);
+        if (syms != XKB_KEY_NoSymbol)
+            fprintf (stderr, "key : %x\n", syms);
+
+    }
+
+
+    
+/*
     screen_enter (epfd);
 
     
@@ -33,7 +55,7 @@ int main(void) {
     view_destory (v);
     
     screen_leave(epfd);
-
+*/
     close (epfd);
   
     return 0;

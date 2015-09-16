@@ -9,6 +9,8 @@ typedef struct _data_handler {
     void (*handler) (int fd, void *data);
 } data_handler_t;
 
+#define MAX(a, b) (((a) > (b))? (a) : (b))
+
 extern int   equal    (double, double);
 
 extern int   strhash  (const char*, int, int);

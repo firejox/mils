@@ -330,11 +330,17 @@ view_t* view_create (void) {
 void view_set_input 
     (view_t *view, const char *text,
      view_event_type type) {
-
-    if (type == VIEW_USER) 
-        view->input_name.text = text;
-    else if (type == VIEW_PASSWD) 
-        view->input_pass.text = text;
+    
+    switch (type) {
+        case VIEW_USER:
+            view->input_name.text = text;
+            break;
+        case VIEW_PASSWD:
+            view->input_pass.text = text;
+            break;
+        default:
+            break;
+    }
     
 }
 
