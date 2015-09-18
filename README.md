@@ -1,2 +1,2 @@
 # mils
-SLiM like Login Manager
+SLiM like Display Manager
