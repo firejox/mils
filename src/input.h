@@ -15,6 +15,8 @@ keysym_t get_input_state_info (input_state_t *st, int *timeout);
 
 int keysym_to_utf8 (keysym_t sym, char *buf, size_t sz);
 
+uint32_t keysym_to_utf32 (keysym_t sym);
+
 void input_state_destroy (input_state_t *st);
 
 #endif

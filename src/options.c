@@ -33,7 +33,6 @@ static void options_add_option (options_t *opts,
     option_t *op;
     int hash_val;
 
-    fprintf (stderr, "malloc %s \n", desc);
     op = xmalloc (sizeof (struct _option));
 
     op->desc = xstrdup (desc);

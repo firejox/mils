@@ -6,11 +6,12 @@
 
 typedef struct _data_handler {
     void *data;
+    int fd;
     void (*handler) (int fd, void *data);
 } data_handler_t;
 
-#define MAX(a, b) (((a) > (b))? (a) : (b))
 
+extern uint64_t   xget_current_time (void);
 extern int   equal    (double, double);
 
 extern int   strhash  (const char*, int, int);

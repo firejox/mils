@@ -6,8 +6,18 @@
 #include <stddef.h>
 #include <errno.h>
 #include <math.h>
+#include <time.h>
+#include <inttypes.h>
 
 
+uint64_t xget_current_time (void) {
+    struct timespec tm;
+    uint64_t calc;
+    clock_gettime (CLOCK_MONOTONIC, &tm);
+    calc = tm.tv_sec * UINT64_C(1000) + tm.tv_nsec / UINT64_C(1000000);
+//    fprintf (stderr, "%"PRIu64"\n", calc);
+    return calc;
+}
 
 int equal (double a, double b) {
     return fabs (a - b) < 1e-5;

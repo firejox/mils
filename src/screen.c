@@ -43,6 +43,7 @@ static struct _kms {
     drmEventContext evctx;
 
     struct drm_fb     *fb;
+    int             count;
 } kms;
 
 static struct {
@@ -83,6 +84,7 @@ static void pageflip_handle (int fd, unsigned int frame,
         unsigned int sec, unsigned int usec, void *data) {
     struct gbm_bo *bo = (struct gbm_bo*) data;
     gbm_surface_release_buffer (gbm.surface, bo);
+    kms.count--;
 }
 
 static void init_kms (void) {
@@ -146,6 +148,7 @@ static void init_kms (void) {
 
     kms.evctx.page_flip_handler = pageflip_handle;
     kms.evctx.version = DRM_EVENT_CONTEXT_VERSION;
+    kms.count = 0;
 }
 
 static void init_gbm (void) {
@@ -238,8 +241,9 @@ static struct drm_fb *get_fb (void) {
     uint32_t stride, handle;
 
 
-    if (fb) 
+    if (fb)  
         return fb;
+
 
     fb = xmalloc (sizeof (struct drm_fb));
     fb->bo = bo;
@@ -291,13 +295,16 @@ static void refresh (void) {
 
     ret = drmModePageFlip (kms.fd, kms.enc->crtc_id,
             next_fb->fb_id, DRM_MODE_PAGE_FLIP_EVENT, kms.fb->bo);
+
     if (ret) {
+        gbm_surface_release_buffer (gbm.surface, next_fb->bo);
+
         fprintf (stderr, 
                 "failed to queue page flip: %s\n",
                 strerror (errno));
         return;
     }
-
+    kms.count++;
     kms.fb = next_fb;
 
 }
@@ -338,6 +345,7 @@ screen_t* screen_create (int epoll_fd) {
     }
     
     /*register epoll*/
+    dht.fd = kms.fd;
     epv.events = EPOLLIN;
     epv.data.fd = kms.fd;
     epv.data.ptr = &dht;
@@ -355,6 +363,8 @@ screen_t* screen_create (int epoll_fd) {
     scr->plane_create = plane_create;
     scr->refresh_screen = refresh;
 
+    fprintf (stderr, "kms fd : %d\n", kms.fd);
+
     return scr;
 }
 
@@ -371,6 +381,10 @@ void screen_destory (screen_t *scr, int epoll_fd) {
 
     if (ret) 
         fprintf (stderr, "failed to add fd", strerror (errno));
+
+    while (kms.count) {
+        drmHandleEvent(kms.fd, &kms.evctx);
+    }
 
     /*drm crtc restore */
     drmModeSetCrtc (kms.fd,

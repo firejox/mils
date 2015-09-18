@@ -90,10 +90,11 @@ static void keytree_key_up (key_tree_t *tree,
     }
     else {
         keytree_key_up (tree, l, m, i*2, key);
+
         if (tree->nodes[i*2].avail)
             memcpy (&tree->nodes[i],
                 &tree->nodes[i*2], sizeof (keynode_t));
-        else
+        else 
             memcpy (&tree->nodes[i],
                 &tree->nodes[i*2+1], sizeof (keynode_t));
     }
@@ -121,7 +122,6 @@ static void keytree_key_down (
         }
     }
     tree->nodes[i].avail = 1;
-    tree->nodes[i].code = key;
 
 }
 

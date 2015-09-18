@@ -13,6 +13,7 @@ typedef enum {
 } view_event_type;
 
 
+
 /*set up graphic enviroment*/
 void screen_enter   (int epoll_fd);
 void screen_leave   (int epoll_fd);
@@ -21,10 +22,13 @@ void screen_leave   (int epoll_fd);
 /*load theme and create login srenn*/
 view_t* view_create  (void);
 
-void    view_set_input 
-    (view_t *view, const char *text, view_event_type type);
+int     view_get_input_lim (view_t *view,
+        view_event_type type);
 
-void    view_update  (view_t *view, view_event_type);
+void    view_set_input (view_t *view,
+        const char *text, view_event_type type);
+
+void    view_update (view_t *view, view_event_type type);
 
 void    view_destory (view_t *view);
 

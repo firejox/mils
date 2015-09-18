@@ -19,9 +19,10 @@
 
 typedef struct _text {
     double x, y;
-    double r, g, b;
+    rgb_t color;
     const char *text;
     PangoFontDescription *font_desc;
+    int limit;
 } text_t;
 
 typedef struct _panel {
@@ -121,6 +122,7 @@ static void setup_input
     const option_data_t *data;
     option_type_t type;
 
+    view->input_name.text = xstrdup ("");
 
     data = get_option_data (opts, "input_name_x", &type);
     if (type == OPTION_DOUBLE)
@@ -134,7 +136,13 @@ static void setup_input
     else
         view->input_name.y = p->y + data->num;
 
+    data = get_option_data (opts, "input_maxlength_name", &type);
+    view->input_name.limit = data->num;
+
+
 /**************************************************************/
+
+    view->input_pass.text = xstrdup ("");
 
     data = get_option_data (opts, "input_pass_x", &type);
     if (type == OPTION_DOUBLE)
@@ -152,12 +160,14 @@ static void setup_input
     else
         view->input_pass.y = view->input_name.y;
 
+    data = get_option_data (opts, "input_maxlength_pass", &type);
+    view->input_name.limit = data->num;
+
 /***************************************************************/
     
     data = get_option_data (opts, "input_color", &type);
-    view->input_name.r = view->input_pass.r = data->color.r;
-    view->input_name.g = view->input_pass.g = data->color.g;
-    view->input_name.b = view->input_pass.b = data->color.b;
+    memcpy (&view->input_name.color, &data->color, sizeof (rgb_t));
+    memcpy (&view->input_pass.color, &data->color, sizeof (rgb_t));
 
     data = get_option_data (opts, "input_font", &type);
     view->input_name.font_desc = pango_font_description_from_string 
@@ -188,9 +198,7 @@ static void setup_userhint
         view->user.y = p->y + data->num;
 
     data = get_option_data (opts, "username_color", &type);
-    view->user.r = data->color.r;
-    view->user.g = data->color.g;
-    view->user.b = data->color.b;
+    memcpy (&view->user.color, &data->color, sizeof (rgb_t));
 
     data = get_option_data (opts, "username_font", &type);
     view->user.font_desc = pango_font_description_from_string 
@@ -198,6 +206,9 @@ static void setup_userhint
 
     data = get_option_data (opts, "username_msg", &type);
     view->user.text = xstrdup (data->str);
+
+    view->user.limit = -1;
+
 }
 
 static void setup_passhint 
@@ -219,9 +230,7 @@ static void setup_passhint
         view->passwd.y = p->y + data->num;
 
     data = get_option_data (opts, "password_color", &type);
-    view->passwd.r = data->color.r;
-    view->passwd.g = data->color.g;
-    view->passwd.b = data->color.b;
+    memcpy (&view->passwd.color, &data->color, sizeof (rgb_t));
 
     data = get_option_data (opts, "password_font", &type);
     view->passwd.font_desc = pango_font_description_from_string 
@@ -229,6 +238,8 @@ static void setup_passhint
 
     data = get_option_data (opts, "password_msg", &type);
     view->passwd.text = xstrdup (data->str);
+
+    view->passwd.limit = -1;
 }
 
 static view_t* load_theme (const char *name) {
@@ -311,7 +322,7 @@ static void render_text (cairo_t *cr, text_t *text) {
     pango_layout_set_text (layout, text->text, -1);
     pango_layout_set_font_description (layout, text->font_desc);
 
-    cairo_set_source_rgb (cr, text->r, text->g, text->b);
+    cairo_set_source_rgb (cr, text->color.r, text->color.g, text->color.b);
     pango_cairo_update_layout (cr, layout);
     pango_cairo_show_layout (cr, layout);
 
@@ -327,16 +338,30 @@ view_t* view_create (void) {
     return view;
 }
 
+int view_get_input_lim 
+    (view_t *view, view_event_type type) {
+
+    switch (type) {
+        case VIEW_USER:
+            return view->input_name.limit;
+        case VIEW_PASSWD:
+            return view->input_pass.limit;
+    }
+}
+
 void view_set_input 
     (view_t *view, const char *text,
      view_event_type type) {
     
     switch (type) {
         case VIEW_USER:
-            view->input_name.text = text;
+            xfree ((char*)view->input_name.text);
+            view->input_name.text = xstrdup(text);
+
             break;
         case VIEW_PASSWD:
-            view->input_pass.text = text;
+            xfree ((char*)view->input_pass.text);
+            view->input_pass.text = xstrdup(text);
             break;
         default:
             break;
@@ -380,12 +405,16 @@ void view_update (view_t *view, view_event_type type) {
         cairo_destroy (wincr);
 
         scr->refresh_screen ();
-    }
+    } 
 }
 
 void view_destory (view_t *v) {
     cairo_surface_destroy (v->theme);
+
+    xfree ((char*)v->input_name.text);
     pango_font_description_free (v->input_name.font_desc);
+    
+    xfree ((char*)v->input_pass.text);
     pango_font_description_free (v->input_pass.font_desc);
 
     xfree ((char*)v->user.text);

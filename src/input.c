@@ -22,6 +22,7 @@ struct _input_state {
     struct xkb_rule_names names;
     struct xkb_keymap *keymap;
     struct xkb_state *st;
+    keysym_t sym;
 
     key_tree_t *ktree;
     
@@ -33,7 +34,7 @@ struct _input_state {
     int rate; /**millisecond*/
 
     uint64_t last_time;
-    int repeated;
+    int repeat_state;
 
     int epfd;
     int fd;
@@ -67,6 +68,8 @@ static struct  libinput_interface face = {
      (dev, LIBINPUT_DEVICE_CAP_KEYBOARD) &&\
      libinput_device_keyboard_has_key (dev, KEY_ESC))
 
+
+
 static void device_add (struct libinput_event *ev) {
     struct libinput_device *dev;
     dev = libinput_event_get_device (ev);
@@ -83,9 +86,9 @@ static void input_handler (int fd, void *data) {
     input_state_t *ist = data;
     struct libinput_event *ev;
     struct libinput_event_keyboard *kev;
-    struct timespec tm;
     enum xkb_key_direction dv;
-    xkb_keycode_t keycode;
+    xkb_keycode_t keycode, key;
+    int count = 0;
 
 
     libinput_dispatch (ist->li);
@@ -95,8 +98,7 @@ static void input_handler (int fd, void *data) {
             case LIBINPUT_EVENT_DEVICE_ADDED:
                 device_add (ev);
 
-                clock_gettime (CLOCK_PROCESS_CPUTIME_ID, &tm);
-                ist->last_time = tm.tv_sec * 1000000LL + (tm.tv_nsec/1000LL);
+                ist->last_time = xget_current_time();
                 break;
             case LIBINPUT_EVENT_KEYBOARD_KEY:
                 kev = libinput_event_get_keyboard_event (ev);
@@ -104,23 +106,30 @@ static void input_handler (int fd, void *data) {
                 keycode = libinput_event_keyboard_get_key (kev) +
                     LIBINPUT_OFFSET;
 
-                clock_gettime (CLOCK_PROCESS_CPUTIME_ID, &tm);
-                ist->last_time = tm.tv_sec * 1000000LL + (tm.tv_nsec/1000LL);
+                ist->last_time = xget_current_time();
 
                 dv = libinput_event_keyboard_get_key_state (kev);
-                
-                if (dv && xkb_keymap_key_repeats (ist->keymap, keycode)) {
-                    ist->repeated = 0;
-                }
+
+
+                keytree_update_key (ist->ktree, keycode, dv);
 
                 xkb_state_update_key (ist->st, keycode, dv);
-                keytree_update_key (ist->ktree, keycode, dv);
+                if (dv && xkb_keymap_key_repeats (ist->keymap, keycode)) {
+                    ist->repeat_state = 0;
+                    fprintf (stderr, "repeated keycode: %d\n", keycode);
+                }
+
+
+                keycode = keytree_get_top_key (ist->ktree);
+                ist->sym = xkb_state_key_get_one_sym (ist->st, keycode);
+                
 
                 break;
             default:
                 break;
         }
-    libinput_event_destroy (ev);
+        libinput_event_destroy (ev);
+        count++;
     }
 
 }
@@ -134,14 +143,16 @@ static void init_libinput (input_state_t *ist) {
 
     ist->delay = 200;
     ist->rate  = 5;
-    ist->repeated = 0;
+    ist->repeat_state = 0;
 
     libinput_udev_assign_seat (ist->li, ist->seat);
 
+    ist->fd = libinput_get_fd (ist->li);
+    
+    ist->handler.fd = ist->fd;
     ist->handler.data = ist;
     ist->handler.handler = input_handler;
 
-    ist->fd = libinput_get_fd (ist->li);
 }
 
 static void init_xkb (input_state_t *ist) {
@@ -196,6 +207,8 @@ input_state_t* input_state_create (int epollfd) {
         return NULL;
     }
 
+    fprintf (stderr, "input fd : %d\n",ist->fd);
+
     return ist;
 }
 
@@ -203,15 +216,13 @@ input_state_t* input_state_create (int epollfd) {
 keysym_t get_input_state_info
             (input_state_t *ist, int *timeout) {
     int size;
-    struct timespec tm;
     int clock;
     xkb_keycode_t key;
 
-    clock_gettime (CLOCK_PROCESS_CPUTIME_ID, &tm);
-    clock = tm.tv_sec * 1000000LL + (tm.tv_nsec/1000LL);
+    clock = xget_current_time ();
     
     //fprintf (stderr, "clock :%d last time: %d\n", clock, ist->last_time);
-    if (ist->repeated) {
+    if (ist->repeat_state == 2) {
         if ((clock - ist->last_time) < ist->rate) {
             *timeout = ist->rate + ist->last_time - clock;
             return XKB_KEY_NoSymbol;
@@ -220,7 +231,7 @@ keysym_t get_input_state_info
             *timeout = ist->rate;
             ist->last_time = clock;
         }
-    } else {
+    } else if (ist->repeat_state == 1) {
         if ((clock - ist->last_time) < ist->delay) {
             *timeout = ist->delay + ist->last_time - clock;
             return XKB_KEY_NoSymbol;
@@ -228,17 +239,21 @@ keysym_t get_input_state_info
         else {
             *timeout = ist->rate;
             ist->last_time = clock;
-            ist->repeated = 1;
+            ist->repeat_state = 2;
         }
-    } 
+    } else {
+        ist->repeat_state = 1;
+    }
 
-    key = keytree_get_top_key (ist->ktree);
-
-    return xkb_state_key_get_one_sym(ist->st, key);
+    return ist->sym;
 }
 
 int keysym_to_utf8 (keysym_t sym, char *buf, size_t sz) {
     return xkb_keysym_to_utf8 (sym, buf, sz);
+}
+
+uint32_t keysym_to_utf32 (keysym_t sym) {
+    return xkb_keysym_to_utf32 (sym);
 }
 
 void input_state_destroy (input_state_t *ist) {
