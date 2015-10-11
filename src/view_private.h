@@ -4,27 +4,27 @@
 /*pango header*/
 #include <pango/pangocairo.h>
 #include "utils.h"
-
+#include "options.h"
 
 typedef enum {
     LINE_TEXT_TYPE,
     CSTRING_TYPE,
-} string_type;
+} view_string_type;
 
 typedef struct {
-    string_type type;
+    view_string_type type;
     union {
         line_text_t* lt,
         char*        cs,
     } str;
-} string_t;
+} view_string_t;
 
-typedef struct _text {
+typedef struct _view_text {
     double x, y;
     rgb_t color;
-    string_t text;
+    view_string_t text;
     PangoFontDescription *font_desc;
-} text_t;
+} view_text_t;
 
 typedef struct _panel {
     double x, y;
@@ -33,13 +33,13 @@ typedef struct _panel {
 
 struct _view {
     cairo_surface_t *theme;
-    text_t input_name;
-    text_t input_pass;
-    text_t user;
-    text_t passwd;
+    view_text_t input_name;
+    view_text_t input_pass;
+    view_text_t user;
+    view_text_t passwd;
 };
 
 extern struct _view* load_theme (const char *);
-extern char* string_t_to_c_str (string_t *);
+extern void render_text (cairo_t*, view_text_t*);
 
 #endif

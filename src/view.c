@@ -25,30 +25,6 @@ void screen_leave (int epoll_fd) {
 
 
 
-
-static void render_text (cairo_t *cr, text_t *text) {
-    PangoLayout *layout;
-    char *str = string_t_to_c_str (text->text);
-
-    cairo_save (cr);
-
-    cairo_translate (cr, text->x, text->y);
-    
-    layout = pango_cairo_create_layout (cr);
-    pango_layout_set_text (layout, str, -1);
-    pango_layout_set_font_description (layout, text->font_desc);
-
-    cairo_set_source_rgb (cr, text->color.r, text->color.g, text->color.b);
-    pango_cairo_update_layout (cr, layout);
-    pango_cairo_show_layout (cr, layout);
-
-    g_object_unref (layout);
-
-    cairo_restore (cr);
-    xfree (str);
-}
-
-
 view_t* view_create (void) {
     view_t* view = load_theme ("default");
 

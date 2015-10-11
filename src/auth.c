@@ -31,6 +31,8 @@ static int auth_conv (int num_msg,
         struct pam_response **resp,
         void *data) {
     auth_t *au = (auth*)data;
+    
+
 }
 
 
@@ -47,8 +49,10 @@ auth_t* auth_create (const char *serve_name) {
     
     au->v = view_create();
     /*user line text ref*/
+    au->user = view_user_input_ref (au->v);
 
     /**passwd line text ref*/
+    au->passwd = view_pass_input_ref (au->v);
 
 
     au->epfd = epoll_create1 (0);
@@ -74,6 +78,7 @@ void auth_once (auth *au) {
         goto pam_start_failed;
 
     screen_enter (au->epfd);
+    au->ist = input_state_create (au->epfd);
 
 
     res = pam_authenticate (au->pamh, 0);
@@ -87,15 +92,13 @@ void auth_once (auth *au) {
     fprintf (stderr, "Authenticated.\n");
 
 
-    screen_leave (au->epfd);
-    
-    pam_end (au->pamh, res);
-    return;
-
+    goto pam_auth_clean;
 
 pam_auth_failed:
     fprintf (stderr, "Not Authenticated.\n");
 
+pam_auth_clean:
+    input_state_destroy (au->ist);
     screen_leave (au->epfd);
 
 pam_start_failed:

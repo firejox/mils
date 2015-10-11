@@ -1,7 +1,6 @@
 #include "view.h"
 #include "view_private.h"
 #include "image.h"
-#include "options.h"
 #include "common.h"
 
 static void setup_background 
@@ -262,11 +261,33 @@ view_t* load_theme (const char *name) {
     return view;
 }
 
-char* string_t_to_c_str (string_t *str) {
+static char* string_t_to_c_str (view_string_t *str) {
     switch (str->type) {
         case CSTRING_TYPE:
             return xstrdup(str->str.cs);
         case LINE_TEXT_TYPE:
             return line_text_to_string (str->str.lt);
     }
+}
+
+void render_text (cairo_t *cr, view_text_t *text) {
+    PangoLayout *layout;
+    char *str = string_t_to_c_str (text->text);
+
+    cairo_save (cr);
+
+    cairo_translate (cr, text->x, text->y);
+    
+    layout = pango_cairo_create_layout (cr);
+    pango_layout_set_text (layout, str, -1);
+    pango_layout_set_font_description (layout, text->font_desc);
+
+    cairo_set_source_rgb (cr, text->color.r, text->color.g, text->color.b);
+    pango_cairo_update_layout (cr, layout);
+    pango_cairo_show_layout (cr, layout);
+
+    g_object_unref (layout);
+
+    cairo_restore (cr);
+    xfree (str);
 }
