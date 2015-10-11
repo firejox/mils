@@ -20,18 +20,18 @@ input_panel_y  65%
 input_name_x 394
 input_name_y 168
 
-input_font Verdana 12
+input_font Inconsolata 12
 input_color #000000
 
 #Username hint
-username_font Verdana Bold 14
+username_font Dejavu Sans Bold 14
 username_color #f9f9f9
 username_x 260
 username_y 163
 username_msg Username:
 
 #password hint
-password_font Verdana Bold 14
+password_font Dejavu Sans Bold 14
 password_color #f9f9f9
 passeord_x 50%
 password_y 183

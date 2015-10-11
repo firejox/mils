@@ -17,11 +17,12 @@ extern int   equal    (double, double);
 extern int   strhash  (const char*, int, int);
 
 extern char* xsprintf (const char *, ...);
-extern char* xfgets   (FILE *fp);
+extern char* xfgets   (FILE *);
 
 extern char* xstrdup  (const char*);
 
 extern void* xmalloc  (size_t);
+extern void* xcalloc  (size_t, size_t);
 extern void* xrealloc (void*, size_t);
 extern void  xfree    (void*);
 

@@ -1,6 +1,7 @@
 
 #ifndef _VIEW_H
 #define _VIEW_H
+#include "utils.h"
 
 typedef struct _view view_t;
 
@@ -13,7 +14,6 @@ typedef enum {
 } view_event_type;
 
 
-
 /*set up graphic enviroment*/
 void screen_enter   (int epoll_fd);
 void screen_leave   (int epoll_fd);
@@ -22,11 +22,8 @@ void screen_leave   (int epoll_fd);
 /*load theme and create login srenn*/
 view_t* view_create  (void);
 
-int     view_get_input_lim (view_t *view,
-        view_event_type type);
-
-void    view_set_input (view_t *view,
-        const char *text, view_event_type type);
+line_text_t* view_user_input_ref(view_t *view);
+line_text_t* view_pass_input_ref(view_t *view);
 
 void    view_update (view_t *view, view_event_type type);
 

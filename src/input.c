@@ -114,10 +114,9 @@ static void input_handler (int fd, void *data) {
                 keytree_update_key (ist->ktree, keycode, dv);
 
                 xkb_state_update_key (ist->st, keycode, dv);
-                if (dv && xkb_keymap_key_repeats (ist->keymap, keycode)) {
+                if (dv && xkb_keymap_key_repeats (ist->keymap, keycode)) 
                     ist->repeat_state = 0;
-                    fprintf (stderr, "repeated keycode: %d\n", keycode);
-                }
+                
 
 
                 keycode = keytree_get_top_key (ist->ktree);
@@ -221,7 +220,14 @@ keysym_t get_input_state_info
 
     clock = xget_current_time ();
     
-    //fprintf (stderr, "clock :%d last time: %d\n", clock, ist->last_time);
+    /* 
+     *  start press   =>repeate rate
+     *  |            |
+     *  ->---------->-->-->-->key press time
+     *      |
+     *      ->delay time
+     * */
+
     if (ist->repeat_state == 2) {
         if ((clock - ist->last_time) < ist->rate) {
             *timeout = ist->rate + ist->last_time - clock;

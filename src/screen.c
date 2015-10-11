@@ -299,14 +299,14 @@ static void refresh (void) {
     if (ret) {
         gbm_surface_release_buffer (gbm.surface, next_fb->bo);
 
-        fprintf (stderr, 
-                "failed to queue page flip: %s\n",
-                strerror (errno));
+    //    fprintf (stderr, 
+      //          "failed to queue page flip: %s\n",
+       //         strerror (errno));
         return;
     }
     kms.count++;
     kms.fb = next_fb;
-
+//    fprintf (stderr, "fb counts : %d\n", kms.count);
 }
 
 

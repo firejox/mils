@@ -119,9 +119,23 @@ char* xstrdup (const char *str) {
     return new_str;
 }
 
+
+
 void* xmalloc (size_t sz) {
     void *mem = NULL;
     mem = malloc (sz);
+    if (mem == NULL) {
+        fprintf (stderr, 
+                "there is no free memory: %s!\n",
+                strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+    return mem;
+}
+
+void* xcalloc (size_t nmemb, size_t sz) {
+    void *mem = NULL;
+    mem = xcalloc (nmemb, sz);
     if (mem == NULL) {
         fprintf (stderr, 
                 "there is no free memory: %s!\n",
