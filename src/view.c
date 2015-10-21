@@ -1,32 +1,36 @@
 #include <stdio.h>
+#include <assert.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <glob.h>
 
 #include "screen.h"
-
-#include "view.h"
+#include "common.h"
 #include "view_private.h"
 
 
 
-static screen_t *scr;
+static screen_t *scr = NULL;
 
 void screen_enter (int epoll_fd) {
-    scr = screen_create (epoll_fd);    
+    if (scr == NULL)
+        scr = screen_create (epoll_fd);
 }
 
 void screen_leave (int epoll_fd) {
-    screen_destory (scr, epoll_fd);
+    if (scr != NULL) {
+        screen_destory (scr, epoll_fd);
+        scr = NULL;
+    }
 }
 
 
 
 view_t* view_create (void) {
-    view_t* view = load_theme ("default");
+    assert (scr != NULL);
+    view_t* view = load_theme ("default", scr->width, scr->height);
 
     return view;
 }
@@ -46,6 +50,8 @@ static int is_single (view_t *v) {
 
 void view_update (view_t *view, view_event_type type) {
     cairo_t *wincr;
+
+    assert (scr != NULL);
 
     if (scr->renderable()) {
     

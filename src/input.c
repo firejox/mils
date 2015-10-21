@@ -184,6 +184,8 @@ static void init_xkb (input_state_t *ist) {
         return;
     }
 
+    ist->sym = XKB_KEY_NoSymbol;
+
 }
 
 input_state_t* input_state_create (int epollfd) {

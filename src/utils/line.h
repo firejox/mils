@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define LINE_TEXT_EVENT_NUM 4
+#define LINE_TEXT_EVENT_NUM 5
 
 typedef enum {
     CURSOR_MOVE_LEFT,

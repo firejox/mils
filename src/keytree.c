@@ -26,6 +26,7 @@ static void keytree_build
     if (l == r) {
         tree->nodes[i].code = l;
         tree->nodes[i].avail = 0;
+        fprintf (stderr, "code :%d \n", l);
         return;
     }
 
@@ -54,7 +55,7 @@ key_tree_t* keytree_create (struct xkb_keymap *keymap) {
     tree->max = xkb_keymap_max_keycode (keymap);
 
     len = calc_nodes (tree->max - tree->min + 1);
-    tree->nodes = xmalloc (sizeof(keynode_t) * len);
+    tree->nodes = xmalloc (len * sizeof(keynode_t));
 
     keytree_build (tree, tree->min, tree->max, 1);
 

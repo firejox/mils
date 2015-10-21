@@ -1,10 +1,22 @@
-#include "view.h"
 #include "view_private.h"
 #include "image.h"
 #include "common.h"
+#include <glob.h>
+#include <stdlib.h>
+#include <string.h>
 
-static void setup_background 
-        (cairo_t *cr, options_t *opts, const char *fn) {
+inline void pango_rect_to_view_rect (const PangoRectangle * restrict p_rect,
+        view_rectangle_t * restrict v_rect) {
+    v_rect->x = pango_units_to_double(p_rect->x);
+    v_rect->y = pango_units_to_double(p_rect->y);
+    v_rect->width = pango_units_to_double(p_rect->width);
+    v_rect->height = pango_units_to_double(p_rect->height);
+}
+
+
+static void setup_background (cairo_t *cr, view_t *v,
+        options_t *opts, const char *fn) {
+
     cairo_surface_t *background_im;
     int back_im_w, back_im_h;
     double w_scale, h_scale;
@@ -22,8 +34,8 @@ static void setup_background
         back_im_w = cairo_image_surface_get_width (background_im);
         back_im_h = cairo_image_surface_get_height (background_im);
 
-        w_scale = (double)scr->width / (double)back_im_w;
-        h_scale = (double)scr->height/ (double)back_im_h;
+        w_scale = (double)v->width / (double)back_im_w;
+        h_scale = (double)v->height/ (double)back_im_h;
 
         cairo_scale (cr, w_scale, h_scale);
         cairo_set_source_surface (cr, background_im, 0, 0);
@@ -35,22 +47,21 @@ static void setup_background
     cairo_restore (cr);
 }
 
-static void setup_panel 
-            (cairo_t *cr, options_t *opts, const char *fn,
-             panel_t *p) {
+static void setup_panel (cairo_t *cr, view_t *v,
+             options_t *opts, const char *fn, panel_t *p) {
     const option_data_t *data;
     option_type_t type;
     cairo_surface_t *panel_im;
     
     data = get_option_data (opts, "input_panel_x", &type);
     if (type == OPTION_DOUBLE)
-        p->x = scr->width * data->fp;
+        p->x = v->width * data->fp;
     else
         p->x = data->num;
 
     data = get_option_data (opts, "input_panel_y", &type);
     if (type == OPTION_DOUBLE)
-        p->y = scr->height * data->fp;
+        p->y = v->height * data->fp;
     else
         p->y = data->num;
 
@@ -194,7 +205,7 @@ static void setup_passhint
 
 }
 
-view_t* load_theme (const char *name) {
+view_t* load_theme (const char *name, uint32_t width, uint32_t height) {
     view_t *view = xmalloc (sizeof (view_t));
 
     cairo_surface_t *theme;
@@ -214,12 +225,15 @@ view_t* load_theme (const char *name) {
 
     panel_t panel;
 
+    view->width = width;
+    view->height = height;
+
 
     opts = options_create (desc_f);
     xfree (desc_f);
 
     theme = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, 
-            scr->width, scr->height);
+            width, height);
     st = cairo_surface_status (theme);
     if (st != CAIRO_STATUS_SUCCESS) {
         fprintf (stderr, "create theme error: %s\n",
@@ -234,7 +248,7 @@ view_t* load_theme (const char *name) {
     glob (background_g, GLOB_BRACE, NULL, &g_theme);
     if (g_theme.gl_pathc) {
         fprintf (stderr, "file: %s\n", g_theme.gl_pathv[0]);
-        setup_background (cr, opts, g_theme.gl_pathv[0]);
+        setup_background (cr, view, opts, g_theme.gl_pathv[0]);
     } 
     globfree (&g_theme);
     xfree (background_g);
@@ -243,7 +257,7 @@ view_t* load_theme (const char *name) {
     glob (panel_g, GLOB_BRACE, NULL, &g_theme);
     if (g_theme.gl_pathc) {
         fprintf (stderr, "file: %s\n", g_theme.gl_pathv[0]);
-        setup_panel (cr, opts, g_theme.gl_pathv[0], &panel);
+        setup_panel (cr, view, opts, g_theme.gl_pathv[0], &panel);
     }
     globfree (&g_theme);
     xfree (panel_g);
@@ -270,9 +284,31 @@ static char* string_t_to_c_str (view_string_t *str) {
     }
 }
 
+static void render_cursor (cairo_t *cr,
+        PangoLayout *layout, view_text_t *text) {
+    PangoRectangle scur;
+    view_rectangle_t vcur;
+    int idx;
+    if (text->text.type == LINE_TEXT_TYPE) {
+        idx = line_text_cursor_pos (text->text.str.lt);
+        cairo_save (cr);
+        pango_layout_get_cursor_pos (layout, idx, &scur, NULL);
+
+        pango_rect_to_view_rect (&scur, &vcur);
+
+
+        cairo_rectangle (cr, vcur.x, vcur.y, vcur.width, vcur.height);
+        cairo_stroke_preserve (cr);
+        cairo_fill (cr);
+        
+
+        cairo_restore (cr);
+    }
+}
+
 void render_text (cairo_t *cr, view_text_t *text) {
     PangoLayout *layout;
-    char *str = string_t_to_c_str (text->text);
+    char *str = string_t_to_c_str (&text->text);
 
     cairo_save (cr);
 
@@ -283,8 +319,10 @@ void render_text (cairo_t *cr, view_text_t *text) {
     pango_layout_set_font_description (layout, text->font_desc);
 
     cairo_set_source_rgb (cr, text->color.r, text->color.g, text->color.b);
+    render_cursor (cr, layout, text);
     pango_cairo_update_layout (cr, layout);
     pango_cairo_show_layout (cr, layout);
+
 
     g_object_unref (layout);
 

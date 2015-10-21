@@ -4,8 +4,9 @@
 #include <stdarg.h>
 #include <unistr.h>
 #include <uniconv.h>
+#include <errno.h>
 #include "line.h"
-#include "common.h"
+#include "../common.h"
 
 typedef struct _char_node {
     uint32_t ch;
@@ -26,7 +27,7 @@ struct _line_text {
 static char_node_t* char_node_create (uint32_t ch) {
     char_node_t *node = xmalloc (sizeof (char_node_t));
     node->ch = ch;
-    node->prev = node->right = NULL;
+    node->prev = node->next = NULL;
     return node;
 }
 
@@ -74,7 +75,7 @@ static void append_ch (line_text_t *lt, va_list vl) {
         lt->cur_pos ++;
         lt->len ++;
     } else if (lt->len < lt->lim) {
-        tmp = char_node_create (node);
+        tmp = char_node_create (code);
 
         if (lt->cur_pos) {
             tmp->next = lt->cur->next;

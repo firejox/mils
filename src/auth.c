@@ -15,8 +15,8 @@ struct _auth {
     view_t *v;
     input_state_t *ist;
     
-    line_text_t *user;
-    line_text_t *passwd;
+    view_event_type cur_v; /*current view status*/
+    line_text_t *cur_lt; /*current line input*/
 
     pam_handle_t *pamh;
     struct pam_conv pconv;
@@ -25,13 +25,83 @@ struct _auth {
 };
 
 
+static char* retrieve_input (auth_t *au) {
+    int timeout = -1, ret;
+    data_handler_t *dht;
+    struct epoll_event tmp;
+    keysym_t sym;
+    char *str;
+
+    view_update (au->v, au->cur_v);
+    while ((ret = epoll_wait (au->epfd, &tmp, 1, timeout)) > -1) {
+        if (ret) {
+            dht = tmp.data.ptr;
+            dht->handler (dht->fd, dht->data);
+        }
+       
+       sym = get_input_state_info (au->ist, &timout);
+       switch (sym) {
+           case XKB_KEY_NoSymbol:
+               break;
+           case XKB_KEY_Return:
+               goto input_end;
+           case XKB_KEY_BackSpace:
+               line_text_handle_event (au->cur_lt, DELETE_LEFT_CH);
+               break;
+           case XKB_KEY_Delete:
+               line_text_handle_event (au->cur_lt, DELETE_RIGHT_CH);
+               break;
+           case XKB_KEY_Left:
+               line_text_handle_event (au->cur_lt, CURSOR_MOVE_LEFT);
+               break;
+           case XKB_KEY_Right:
+               line_text_handle_event (au->cur_lt, CURSOR_MOVE_RIGHT);
+               break;
+           default:
+               line_text_handle_event (au->cur_lt, APPEND_CH, keysym_to_utf32(sym));
+               break;
+       }
+       if (sym != XKB_KEY_NoSymbol)
+           view_update (au->v, au->cur_v);
+    
+    }
+
+input_end:
+    str = line_text_to_string (au->cur_lt);
+    line_text_unref (au->cur_lt);
+    return str;
+}
 
 static int auth_conv (int num_msg,
         const struct pam_message **msgm,
         struct pam_response **resp,
         void *data) {
+    int i;
     auth_t *au = (auth*)data;
+    struct pam_response *reply;
+    char *str;
     
+    reply = xcalloc (num_msg, sizeof (struct pam_response));
+    
+    for (i = 0; i < num_msg; i++) {
+        str = NULL;
+
+        switch (msgm[i]->msg_style) {
+            case PAM_PROMPT_ECHO_ON: /*user*/
+                au->cur_v = VIEW_USER;
+                au->cur_lt = view_user_input_ref (au->v);
+                str = retrieve_input (au);
+                break;
+            case PAM_PROMPT_ECHO_OFF:
+                au->cur_v = VIEW_USER;
+                au->cur_lt = view_pass_input_ref (au->v);
+                str = retrieve_input (au);
+                break;
+
+        
+        }
+        
+    }
 
 }
 
@@ -48,11 +118,6 @@ auth_t* auth_create (const char *serve_name) {
     au->ist = NULL;
     
     au->v = view_create();
-    /*user line text ref*/
-    au->user = view_user_input_ref (au->v);
-
-    /**passwd line text ref*/
-    au->passwd = view_pass_input_ref (au->v);
 
 
     au->epfd = epoll_create1 (0);

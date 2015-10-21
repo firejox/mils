@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 
 project(mils)
 
@@ -10,6 +10,8 @@ set (CMAKE_INCLUDE_CURRENT_DIR TRUE)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
 
 message (${CMAKE_MODULE_PATH})
+add_subdirectory (utils)
+
 add_library (common SHARED common.c)
 
 add_library (options options.c)
@@ -27,28 +29,29 @@ target_include_directories (image ${image_dirs})
 target_link_libraries (image ${image_libs})
 
 #grphical compile
-add_library (graphic screen.c view.c)
-set(graphic_libs options image)
+add_library (graphic screen.c view.c view_private.c)
 
 find_package (DRM REQUIRED)
-set (graphic_dirs ${graphic_dirs} PUBLIC ${LIBDRM_INCLUDE_DIRS})
-set (graphic_libs ${graphic_libs} ${LIBDRM_LIBRARIES})
-
 find_package (GBM REQUIRED)
-set (graphic_dirs ${graphic_dirs} PUBLIC ${GBM_INCLUDE_DIRS})
-set (graphic_libs ${graphic_libs} ${GBM_LIBRARIES})
-
 find_package (EGL REQUIRED)
-set (graphic_dirs ${graphic_dirs} PUBLIC ${EGL_INCLUDE_DIRS})
-set (graphic_libs ${graphic_libs} ${EGL_LIBRARIES})
-
 find_package (PANGOCAIRO REQUIRED)
-set (graphic_dirs ${graphic_dirs} PUBLIC ${PANGOCAIRO_INCLUDE_DIRS})
-set (graphic_libs ${graphic_libs} ${PANGOCAIRO_LIBRARIES})
 
+set (graphic_dirs 
+    PUBLIC ${LIBDRM_INCLUDE_DIRS}
+    PUBLIC ${GBM_INCLUDE_DIRS}
+    PUBLIC ${EGL_INCLUDE_DIRS}
+    PUBLIC ${PANGOCAIRO_INCLUDE_DIRS} )
 
+set (graphic_libs
+    ${LIBDRM_LIBRARIES}
+    ${GBM_LIBRARIES}
+    ${EGL_LIBRARIES}
+    ${PANGOCAIRO_LIBRARIES}
+    options image utils)
 
-target_include_directories (graphic PUBLIC ${graphic_dirs})
+message ("graphic : ${graphic_dirs}")
+
+target_include_directories (graphic ${graphic_dirs})
 target_link_libraries (graphic ${graphic_libs})
 
 #input compile
@@ -68,15 +71,13 @@ set (input_libs ${input_libs} ${LIBUDEV_LIBRARIES})
 
 set (input_libs ${input_libs} common)
 
+message (" input :${input_dirs}")
+
 target_include_directories (input ${input_dirs})
 target_link_libraries (input ${input_libs})
 
-find_package (UNISTRING REQUIRED)
-set (unicode_dirs ${UNISTRING_INCLUDE_DIRS})
-set (unicode_libs ${UNISTRING_LIBRARIES})
 
 
 
 add_executable (mils main.c)
-target_include_directories (mils PUBLIC ${unicode_dirs})
-target_link_libraries (mils graphic input ${unicode_libs})
+target_link_libraries (mils graphic input utils)
