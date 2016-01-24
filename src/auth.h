@@ -4,7 +4,7 @@
 typedef struct _auth auth_t;
 
 
-auth_t* auth_create(void);
+auth_t* auth_create(const char *);
 
 void    auth_loop (auth_t *auth);
 void    auth_once (auth_t *auth);

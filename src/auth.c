@@ -1,12 +1,13 @@
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
-
+#include <errno.h>
 
 #include "auth.h"
 #include "view.h"
 #include "input.h"
 #include "common.h"
 #include "utils.h"
+
 
 
 struct _auth {
@@ -39,7 +40,7 @@ static char* retrieve_input (auth_t *au) {
             dht->handler (dht->fd, dht->data);
         }
        
-       sym = get_input_state_info (au->ist, &timout);
+       sym = get_input_state_info (au->ist, &timeout);
        switch (sym) {
            case XKB_KEY_NoSymbol:
                break;
@@ -77,7 +78,7 @@ static int auth_conv (int num_msg,
         struct pam_response **resp,
         void *data) {
     int i;
-    auth_t *au = (auth*)data;
+    auth_t *au = (auth_t*)data;
     struct pam_response *reply;
     char *str;
     
@@ -98,10 +99,53 @@ static int auth_conv (int num_msg,
                 str = retrieve_input (au);
                 break;
 
+            case PAM_ERROR_MSG:
+                if (fprintf (stderr,
+                            "error msg %s\n", msgm[i]->msg) < 0) 
+                    goto failed_conv;
+
+                break;
+                
+            case PAM_TEXT_INFO:
+                if (fprintf (stderr,
+                            "text info %s\n", msgm[i]->msg) < 0)
+                    goto failed_conv;
+                break;
+
+            default :
+                goto failed_conv;
+        }
+
+        if (str) {
+            reply[i].resp_retcode = 0;
+            reply[i].resp = str;
         
         }
         
     }
+
+    *resp = reply;
+
+    return PAM_SUCCESS;
+
+failed_conv:
+    
+    if (reply) {
+        for (i = 0; i < num_msg; i++) {
+            if (reply[i].resp == NULL)
+                continue;
+
+            switch (msgm[i]->msg_style) {
+                case PAM_PROMPT_ECHO_ON:
+                case PAM_PROMPT_ECHO_OFF:
+                    free(reply[i].resp);
+            }
+
+            reply[i].resp = NULL;
+        }
+    }
+    
+    return PAM_CONV_ERR;
 
 }
 
@@ -116,9 +160,6 @@ auth_t* auth_create (const char *serve_name) {
     
     
     au->ist = NULL;
-    
-    au->v = view_create();
-
 
     au->epfd = epoll_create1 (0);
     if (au->epfd == -1) {
@@ -127,22 +168,23 @@ auth_t* auth_create (const char *serve_name) {
         exit (-1);
     }
     
+    screen_enter (au->epfd);
+    
+    au->v = view_create();
 
     au->name = xstrdup (serve_name);
 
     return au;
 }
 
-void auth_once (auth *au) {
+void auth_once (auth_t *au) {
     int res;
     
     res = pam_start (au->name, NULL, &au->pconv, &au->pamh);
 
-
     if (res != PAM_SUCCESS) 
         goto pam_start_failed;
 
-    screen_enter (au->epfd);
     au->ist = input_state_create (au->epfd);
 
 
@@ -150,7 +192,7 @@ void auth_once (auth *au) {
     if (res != PAM_SUCCESS)
         goto pam_auth_failed;
 
-    res = pam_acct_mgmt (au->pamh, 0)
+    res = pam_acct_mgmt (au->pamh, 0);
     if (res != PAM_SUCCESS)
         goto pam_auth_failed;
     
@@ -164,10 +206,21 @@ pam_auth_failed:
 
 pam_auth_clean:
     input_state_destroy (au->ist);
-    screen_leave (au->epfd);
 
 pam_start_failed:
     pam_end (au->pamh, res);
 }
 
 
+void auth_loop (auth_t *au) {
+    while (1) {
+        auth_once (au);
+    }
+}
+
+void auth_destory (auth_t *au) {
+    screen_leave (au->epfd);
+    view_destory (au->v);
+    close(au->epfd);
+    xfree (au);
+}
