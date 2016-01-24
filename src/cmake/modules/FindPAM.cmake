@@ -1,0 +1,38 @@
+
+
+IF (PAM_INCLUDE_DIRS AND PAM_LIBRARIES)
+    set (PAM_FIND_QUIETLY TRUE)
+ELSE (PAM_INCLUDE_DIRS AND PAM_LIBRARIES)
+    find_path (PAM_INCLUDE_DIRS NAMES security/pam_appl.h pam/pam_appl.h)
+    find_library (PAM_LIBRARY pam)
+    find_library (DL_LIBRARY dl)
+
+    IF (PAM_INCLUDE_DIRS AND PAM_LIBRARY)
+        set (PAM_FOUND TRUE)
+
+        IF (DL_LIBRARY)
+            set (PAM_LIBRARIES ${PAM_LIBRARY} ${DL_LIBRARY})
+        ELSE (DL_LIBRARY)
+            set (PAM_LIBRARIES ${PAM_LIBRARY})
+        ENDIF (DL_LIBRARY)
+
+        IF (EXISTS ${PAM_INCLUDE_DIRS}/pam/pam_appl.h)
+            set (HAVE_PAM_PAM_APPL_H 1)
+        ENDIF (EXISTS ${PAM_INCLUDE_DIRS}/pam/pam_appl.h)
+
+    ENDIF (PAM_INCLUDE_DIRS AND PAM_LIBRARY)
+
+    IF (PAM_FOUND)
+        IF (NOT PAM_FIND_QUIETLY)
+            message (STATUS "Found PAM: ${PAM_LIBRARIES}")
+        ENDIF (NOT PAM_FIND_QUIETLY)
+    ELSE (PAM_FOUND)
+        IF (PAM_FIND_REQUIRED)
+            message (FATAL_ERROR "PAM was not found")
+        ENDIF (PAM_FIND_REQUIRED)
+    ENDIF (PAM_FOUND)
+
+
+    MARK_AS_ADVANCED (PAM_INCLUDE_DIRS PAM_LIBRARIES)
+
+ENDIF (PAM_INCLUDE_DIRS AND PAM_LIBRARIES)
