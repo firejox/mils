@@ -98,6 +98,7 @@ target_link_libraries (
     utils
     )
 
+file (COPY ${CMAKE_SOURCE_DIR}/default DESTINATION ${CMAKE_BINARY_DIR}/)
 
 add_executable (Mils main.c)
 target_link_libraries (Mils mils)

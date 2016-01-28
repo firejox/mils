@@ -9,7 +9,12 @@ set (utils_src
     line.h
 )
 
-add_library (utils ${utils_src})
+add_library (utils_obj OBJECT ${utils_src})
 
-target_include_directories (utils PUBLIC ${unicode_dirs})
-target_link_libraries (utils ${unicode_libs})
+target_include_directories (utils_obj PUBLIC ${unicode_dirs})
+
+add_library (utils INTERFACE)
+set_property (TARGET utils
+    PROPERTY INTERFACE_SOURCES $<TARGET_OBJECTS:utils_obj>)
+target_link_libraries (utils
+    INTERFACE ${unicode_libs})
