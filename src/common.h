@@ -29,8 +29,11 @@ extern void  xfree    (void*);
 
 extern void _debug_log (const char *, ...);
 
+#define STR(x) SPLICE_STR(x)
+#define SPLICE_STR(x) #x
+
 #define debug_log(...) \
-    _debug_log ("file: " __FILE__ " line: " #__LINE__ __VA_ARGS__)
+    _debug_log ("file: " __FILE__ " line: " STR(__LINE__) " "  __VA_ARGS__)
 
 #define assert_log(cond, ...) \
     if (cond) { debug_log(__VA_ARGS__); assert(0); } \

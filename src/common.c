@@ -151,5 +151,5 @@ void _debug_log (const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     fprintf (stderr, fmt, ap);
-    va_end(ap, fmt);
+    va_end(ap);
 }
