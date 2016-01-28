@@ -41,11 +41,7 @@ char* xsprintf (const char *fmt, ...) {
     len = vsnprintf (NULL, 0, fmt, ap);
     va_end (ap);
 
-    if (len < 0) {
-        fprintf (stderr, "there is error for"
-                " calculating format length\n");
-        exit (-1);
-    }
+    assert_log (len < 0, "there is error for calculating format length\n");
 
     len++;
 
@@ -55,11 +51,7 @@ char* xsprintf (const char *fmt, ...) {
     len = vsnprintf (str, len, fmt, ap);
     va_end(ap);
     
-    if (len < 0) {
-        fprintf (stderr, "there is error for"
-                " making string.\n");
-        exit (-1);
-    }
+    assert_log (len < 0, "there is error for making string.\n");
 
     return str;
 }
@@ -110,12 +102,11 @@ char* xfgets (FILE *fp)  {
 char* xstrdup (const char *str) {
     char *new_str = NULL;
     new_str = strdup (str);
-    if (new_str == NULL) {
-        fprintf (stderr, "there is no free"
-                " memory for duplicating string: "
-                "%s\n", strerror (errno));
-        exit (EXIT_FAILURE);
-    }
+    
+    assert_log (!new_str, 
+            "there is no free memory for duplicating string: "
+            "%s\n", strerror (errno));
+
     return new_str;
 }
 
@@ -124,24 +115,19 @@ char* xstrdup (const char *str) {
 void* xmalloc (size_t sz) {
     void *mem = NULL;
     mem = malloc (sz);
-    if (mem == NULL) {
-        fprintf (stderr, 
-                "there is no free memory: %s!\n",
-                strerror (errno));
-        exit (EXIT_FAILURE);
-    }
+
+    assert_log (!mem,
+            "there is no free memory: %s!\n", strerror (errno));   
     return mem;
 }
 
 void* xcalloc (size_t nmemb, size_t sz) {
     void *mem = NULL;
     mem = calloc (nmemb, sz);
-    if (mem == NULL) {
-        fprintf (stderr, 
-                "there is no free memory: %s!\n",
-                strerror (errno));
-        exit (EXIT_FAILURE);
-    }
+
+    assert_log (!mem,
+            "there is no free memory: %s!\n", strerror (errno));
+
     return mem;
 }
 
@@ -149,13 +135,9 @@ void* xrealloc (void *ptr, size_t sz) {
     void *mem = NULL;
     
     mem = realloc (ptr, sz);
-    
-    if (mem == NULL) {
-        fprintf (stderr, 
-                "there is no free memory: %s!\n",
-                strerror (errno));
-        exit (EXIT_FAILURE);
-    }
+
+    assert_log (!mem,
+            "there is no free memory: %s!\n", strerror (errno));
     
     return mem;
 }
@@ -163,4 +145,11 @@ void* xrealloc (void *ptr, size_t sz) {
 void xfree (void *mem) {
     if (mem)
         free (mem);
+}
+
+void _debug_log (const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf (stderr, fmt, ap);
+    va_end(ap, fmt);
 }
