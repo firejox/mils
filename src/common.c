@@ -135,7 +135,7 @@ void* xmalloc (size_t sz) {
 
 void* xcalloc (size_t nmemb, size_t sz) {
     void *mem = NULL;
-    mem = xcalloc (nmemb, sz);
+    mem = calloc (nmemb, sz);
     if (mem == NULL) {
         fprintf (stderr, 
                 "there is no free memory: %s!\n",
